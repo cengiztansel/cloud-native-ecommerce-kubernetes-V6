@@ -1,0 +1,88 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth-service
+  namespace: quantumshop
+
+spec:
+  replicas: 0
+
+  selector:
+    matchLabels:
+      app: auth-service
+
+  template:
+    metadata:
+      labels:
+        app: auth-service
+
+    spec:
+      containers:
+        - name: auth-service
+
+          image: cengiztansel/auth-service:v1
+
+          imagePullPolicy: Always
+
+          ports:
+            - containerPort: 8086
+
+          resources:
+            requests:
+              cpu: 500m
+              memory: 512Mi
+            limits:
+              cpu: 1000m
+              memory: 1Gi
+
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              valueFrom:
+                configMapKeyRef:
+                  name: auth-config
+                  key: SPRING_PROFILES_ACTIVE
+         #   - name: JAVA_TOOL_OPTIONS
+         #     value: "-Xms128m -Xmx256m" 
+
+            - name: POSTGRES_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: auth-db-secret
+                  key: POSTGRES_USER
+
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: auth-db-secret
+                  key: POSTGRES_PASSWORD
+
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: auth-jwt-secret
+                  key: JWT_SECRET
+
+          startupProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8086
+            failureThreshold: 18
+            initialDelaySeconds: 60
+            periodSeconds: 10
+            timeoutSeconds: 10
+
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 8086
+            initialDelaySeconds: 90
+            periodSeconds: 15
+            timeoutSeconds: 5
+
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8086
+            initialDelaySeconds: 90
+            periodSeconds: 15
+            timeoutSeconds: 5
